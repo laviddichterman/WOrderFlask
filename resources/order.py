@@ -26,15 +26,53 @@ class WProduct(object):
     """A Product: a good or a service
     """
     marshal_fields = {
+        'shortcode': fields.String,
+        'description': fields.String,
+        'display_name': fields.String,
+        'price': fields.Float
     }
+
+    def __init__(self,
+                 shortcode,
+                 description,
+                 display_name,
+                 price):
+        self.shortcode = shortcode
+        self.description = description
+        self.display_name = display_name
+        self.price = price
+
+
+class WProductQuantity(object):
+    """A tuple of a @WProduct and an amount of said products
+    """
+    marshal_fields = {
+        'quantity': fields.Integer,
+        'product': fields.Nested(WProduct.marshal_fields)
+    }
+
+    def __init__(self, product, quantity):
+        self.product = product
+        self.quantity = quantity
+
+
+class WOption(WProduct):
+    """A @WProduct whose availablity can be enabled/disabled via a function.
+    """
+    marshal_fields = WProduct.marshal_fields.copy()
+    marshal_fields.update({'enable_function_name': fields.String})
+
+    def __init__(self, enable_function_name, *args, **kwargs):
+        super(WOption, self).__init__(self, args, kwargs)
+        self.enable_function_name = enable_function_name
 
 
 class WOrder(object):
     marshal_fields = {
-        'o_id':         fields.String,
-        'products':     fields.List(fields.String),
-        'status':       fields.String,
-        'client_data':  fields.Nested(WClientData.marshal_fields)
+        'o_id': fields.String,
+        'products': fields.List(fields.Nested(WProductQuantity.marshal_fields)),
+        'status': fields.String,
+        'client_data': fields.Nested(WClientData.marshal_fields)
     }
 
     def __init__(self,
@@ -75,6 +113,8 @@ class OrderPost(Resource):
     def post(self):
         args = parser.parse_args()
         order_id = str(int(max(orders.keys())) + 1)
-        orders[order_id] = WOrder(order_id, [],
-                                  args['status'], "delivery", None, {})
+        orders[order_id] = WOrder(order_id,
+            [WProductQuantity(
+                WProduct("z", "The best thing", "displaaaay nanme", 5), 5)],
+                args['status'], "delivery", None, {})
         return orders[order_id]
